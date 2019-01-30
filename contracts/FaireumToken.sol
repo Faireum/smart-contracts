@@ -40,3 +40,32 @@ library SafeMath {
   }
 }
 
+contract Ownable {
+  address public owner;
+
+  event OwnershipTransferred(address indexed owner, address indexed newOwner);
+
+  constructor() public {
+    owner = msg.sender;
+  }
+
+  /**
+   * @dev Only allows called by the owner.
+   */
+  modifier onlyOwner() {
+    require(msg.sender == owner, "Owner is necessary.");
+    _;
+  }
+
+  /**
+   * @dev Transfer ownership of the contract to a newOwner.
+   * @param newOwner The address of new ownership.
+   */
+  function transferOwnership(address newOwner) public onlyOwner {
+    require(newOwner != address(0x0), "0x0 invalid.");
+    emit OwnershipTransferred(owner, newOwner);
+    owner = newOwner;
+  }
+
+}
+
