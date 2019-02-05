@@ -109,3 +109,13 @@ contract ERC20 {
   event Transfer(address indexed from, address indexed to, uint256 value);
   event Approval(address indexed owner, address indexed spender, uint256 value);
 }
+
+contract FaireumToken is Pausable,ERC20 {
+  using SafeMath for uint256;
+
+  mapping(address => uint256) balances;
+  mapping(address => mapping (address => uint256)) internal allowed;
+
+  event Burn(address indexed burner, uint256 value);
+
+}
