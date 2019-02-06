@@ -118,4 +118,38 @@ contract FaireumToken is Pausable,ERC20 {
 
   event Burn(address indexed burner, uint256 value);
 
+  string constant public symbol = "FAIRC";
+  string constant public name = "Faireum Token";
+  uint8  constant public decimals = 18;
+  uint256 public totalSupply = 1200000000 * 10 ** uint(decimals);
+
+  address privateCrowdsale = ;
+  address publicCrowdsale = ;
+  address beneficiary = ;
+  address marketing = ;
+  address company = ;
+  address bounty = ;
+  address game = ;
+  address team = ;
+
+  uint256 constant privateCrowdsaleTokens = ;
+  uint256 constant publicCrowdsaleTokens = ;
+  uint256 constant marketingTokens = ;
+  uint256 constant teamTokens = ;
+  uint256 constant bountyTokens = ;
+  uint256 constant gameTokens = ;
+  uint256 constant companyTokens = ;
+
+  constructor() public {
+    preSale(privateCrowdsale, privateCrowdsaleTokens);
+    preSale(publicCrowdsale, publicCrowdsaleTokens);
+    preSale(marketing, marketingTokens);
+    preSale(team, teamTokens);
+    preSale(bounty, bountyTokens);
+    preSale(game, gameTokens);
+    preSale(company, companyTokens);
+  }
+
+
+
 }
