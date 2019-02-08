@@ -150,6 +150,58 @@ contract FaireumToken is Pausable,ERC20 {
     preSale(company, companyTokens);
   }
 
+  function preSale(address _address, uint256 _amount) internal returns (bool) {
+    balances[_address] = _amount;
+    emit Transfer(address(0x0), _address, _amount);
+  }
 
+  function () public payable {
+    beneficiary.transfer(msg.value);
+  }
+
+  /**
+  * @dev Gets the balance of the specified address.
+  * @param _owner The address to query the the balance of.
+  * @return An uint256 representing the amount owned by the passed address.
+  */
+  function balanceOf(address _owner) public view returns (uint256 balance) {
+    return balances[_owner];
+  }
+
+  /**
+  * @dev Transfer token for a specified address
+  * @param _to The address to transfer to.
+  * @param _value The amount to be transferred.
+  */
+  function transfer(address _to, uint256 _value) whenNotPaused public returns (bool) {
+    require(_to != address(0x0), "0x0 invalid.");
+    require(_value > 0, "Amount invalid.");
+    require(_value <= balances[msg.sender], "Amount overflow.");
+
+    // SafeMath.sub will throw if there is not enough balance.
+    balances[msg.sender] = balances[msg.sender].sub(_value);
+    balances[_to] = balances[_to].add(_value);
+    emit Transfer(msg.sender, _to, _value);
+    return true;
+  }
+
+  /**
+   * @dev Transfer tokens from one address to another
+   * @param _from address The address which you want to send tokens from
+   * @param _to address The address which you want to transfer to
+   * @param _value uint256 the amount of tokens to be transferred
+   */
+  function transferFrom(address _from, address _to, uint256 _value) whenNotPaused public returns (bool) {
+    require(_to != address(0x0), "0x0 invalid.");
+    require(_value > 0, "Amount invalid.");
+    require(_value <= balances[_from], "Amount overflow.");
+    require(_value <= allowed[_from][msg.sender], "Allowed amount overflow.");
+
+    balances[_from] = balances[_from].sub(_value);
+    balances[_to] = balances[_to].add(_value);
+    allowed[_from][msg.sender] = allowed[_from][msg.sender].sub(_value);
+    emit Transfer(_from, _to, _value);
+    return true;
+  }
 
 }
