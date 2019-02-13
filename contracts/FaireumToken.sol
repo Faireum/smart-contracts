@@ -420,3 +420,47 @@ contract TokenVault {
     }
 }
 
+contract FaireumToken is ERC20, ERC20Detailed, AdminRole {
+    using SafeMath for uint256;
+
+    uint8 public constant DECIMALS = 18;
+
+    /// Maximum tokens to be allocated (1.2 billion FAIRC)
+    uint256 public constant INITIAL_SUPPLY = 1200000000 * 10**uint256(DECIMALS);
+
+    /// This vault is used to keep the Faireum team, developers and advisors tokens
+    TokenVault public teamAdvisorsTokensVault;
+
+    /// This vault is used to keep the reward pool tokens
+    TokenVault public rewardPoolTokensVault;
+
+    /// This vault is used to keep the founders tokens
+    TokenVault public foundersTokensVault;
+
+    /// This vault is used to keep the tokens for marketing/partnership/airdrop
+    TokenVault public marketingAirdropTokensVault;
+
+    /// This vault is used to keep the tokens for sale
+    TokenVault public saleTokensVault;
+
+    /// The reference time point at which all token locks start
+    //  Mon Mar 11 2019 00:00:00 GMT+0000   The begining of Pre ICO
+    uint256 public locksStartDate = 1552262400;
+
+    mapping(address => uint256) public lockedHalfYearBalances;
+    mapping(address => uint256) public lockedFullYearBalances;
+
+    modifier timeLock(address from, uint256 value) {
+        if (lockedHalfYearBalances[from] > 0 && now >= locksStartDate + 182 days) lockedHalfYearBalances[from] = 0;
+        if (now < locksStartDate + 365 days) {
+            uint256 unlocks = balanceOf(from).sub(lockedHalfYearBalances[from]).sub(lockedFullYearBalances[from]);
+            require(value <= unlocks);
+        } else if (lockedFullYearBalances[from] > 0) lockedFullYearBalances[from] = 0;
+        _;
+    }
+
+    constructor () public ERC20Detailed("Faireum Token", "FAIRC", DECIMALS) {
+    }
+
+
+}
