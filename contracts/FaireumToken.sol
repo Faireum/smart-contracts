@@ -462,5 +462,38 @@ contract FaireumToken is ERC20, ERC20Detailed, AdminRole {
     constructor () public ERC20Detailed("Faireum Token", "FAIRC", DECIMALS) {
     }
 
+    /// @dev function to lock reward pool tokens
+    function lockRewardPoolTokens(address _beneficiary, uint256 _tokensAmount) public onlyAdmin {
+        _lockTokens(address(rewardPoolTokensVault), false, _beneficiary, _tokensAmount);
+    }
+
+    /// @dev function to lock founders tokens
+    function lockFoundersTokens(address _beneficiary, uint256 _tokensAmount) public onlyAdmin {
+        _lockTokens(address(foundersTokensVault), false, _beneficiary, _tokensAmount);
+    }
+
+    /// @dev function to lock team/devs/advisors tokens
+    function lockTeamTokens(address _beneficiary, uint256 _tokensAmount) public onlyAdmin {
+        require(_tokensAmount.mod(2) == 0);
+        uint256 _half = _tokensAmount.div(2);
+        _lockTokens(address(teamAdvisorsTokensVault), false, _beneficiary, _half);
+        _lockTokens(address(teamAdvisorsTokensVault), true, _beneficiary, _half);
+    }
+
+    /// @dev check the locked balance for an address
+    function lockedBalanceOf(address _owner) public view returns (uint256) {
+        return lockedFullYearBalances[_owner].add(lockedHalfYearBalances[_owner]);
+    }
+
+    /// @dev change the allowance for an ICO sale service provider
+    function approveSaleSpender(address _spender, uint256 _tokensAmount) public onlyAdmin {
+        saleTokensVault.approve(_spender, _tokensAmount);
+    }
+
+    /// @dev change the allowance for an ICO marketing service provider
+    function approveMarketingSpender(address _spender, uint256 _tokensAmount) public onlyAdmin {
+        marketingAirdropTokensVault.approve(_spender, _tokensAmount);
+    }
+
 
 }
