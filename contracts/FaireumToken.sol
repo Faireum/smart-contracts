@@ -495,5 +495,38 @@ contract FaireumToken is ERC20, ERC20Detailed, AdminRole {
         marketingAirdropTokensVault.approve(_spender, _tokensAmount);
     }
 
+    function transferFrom(address from, address to, uint256 value) public timeLock(from, value) returns (bool) {
+        return super.transferFrom(from, to, value);
+    }
+
+    function transfer(address to, uint256 value) public timeLock(msg.sender, value) returns (bool) {
+        return super.transfer(to, value);
+    }
+
+    function burn(uint256 value) public {
+        _burn(msg.sender, value);
+    }
+
+    function createTokensVaults() external onlyAdmin {
+        require(teamAdvisorsTokensVault == address(0));
+        require(rewardPoolTokensVault == address(0));
+        require(foundersTokensVault == address(0));
+        require(marketingAirdropTokensVault == address(0));
+        require(saleTokensVault == address(0));
+
+        // Team, devs and advisors tokens - 120M FAIRC (10%)
+        teamAdvisorsTokensVault = createTokenVault(120000000 * (10 ** uint256(DECIMALS)));
+        // Reward funding pool tokens - 240M FAIRC (20%)
+        rewardPoolTokensVault = createTokenVault(240000000 * (10 ** uint256(DECIMALS)));
+        // Founders tokens - 60M FAIRC (5%)
+        foundersTokensVault = createTokenVault(60000000 * (10 ** uint256(DECIMALS)));
+        // Marketing/partnership/airdrop tokens - 120M FAIRC (10%)
+        marketingAirdropTokensVault = createTokenVault(120000000 * (10 ** uint256(DECIMALS)));
+        // Sale tokens - 660M FAIRC (55%)
+        saleTokensVault = createTokenVault(660000000 * (10 ** uint256(DECIMALS)));
+
+        require(totalSupply() == INITIAL_SUPPLY);
+    }
+
 
 }
