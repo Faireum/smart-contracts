@@ -528,5 +528,33 @@ contract FaireumToken is ERC20, ERC20Detailed, AdminRole {
         require(totalSupply() == INITIAL_SUPPLY);
     }
 
+    /// @dev Admin-only function to recover any tokens mistakenly sent to this contract
+    function recoverERC20Tokens(address _contractAddress) external onlyAdmin  {
+        IERC20 erc20Token = IERC20(_contractAddress);
+        if (erc20Token.balanceOf(address(this)) > 0) {
+            require(erc20Token.transfer(msg.sender, erc20Token.balanceOf(address(this))));
+        }
+    }
 
+    /// @dev Create a TokenVault, fill with newly minted tokens and
+    /// allow them to be spent only from the token contract
+    function createTokenVault(uint256 tokens) internal returns (TokenVault) {
+        TokenVault tokenVault = new TokenVault(ERC20(this));
+        _mint(address(tokenVault), tokens);
+        tokenVault.fillUpAllowance();
+        return tokenVault;
+    }
+
+    /// @dev generic function to lock tokens from a vault
+    function _lockTokens(address _fromVault, bool _halfYear, address _beneficiary, uint256 _tokensAmount) internal {
+        require(_beneficiary != address(0));
+
+        if (_halfYear) {
+            lockedHalfYearBalances[_beneficiary] = lockedHalfYearBalances[_beneficiary].add(_tokensAmount);
+        } else {
+            lockedFullYearBalances[_beneficiary] = lockedFullYearBalances[_beneficiary].add(_tokensAmount);
+        }
+
+        require(this.transferFrom(_fromVault, _beneficiary, _tokensAmount));
+    }
 }
