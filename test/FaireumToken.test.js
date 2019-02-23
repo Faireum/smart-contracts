@@ -155,6 +155,26 @@ contract('FaireumToken', ([sender, receiver, accounts, anotherAccount, recipient
 
     });
 
+    describe('balanceOf', function () {
+
+        describe('the contract creator account should no tokens at the beginning', function () {
+            it('returns zero', async function () {
+                (await this.token.balanceOf(sender)).should.be.bignumber.equal('0');
+            });
+        });
+
+        describe('the contract creator account should no tokens after createTokensVaults function called', function () {
+
+            beforeEach(async function () {
+                await this.token.createTokensVaults();
+            });
+
+            it('returns zero', async function () {
+                (await this.token.balanceOf(sender)).should.be.bignumber.equal('0');
+            });
+        });
+    });
+
 
 
 });
