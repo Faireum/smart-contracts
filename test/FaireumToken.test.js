@@ -175,6 +175,195 @@ contract('FaireumToken', ([sender, receiver, accounts, anotherAccount, recipient
         });
     });
 
+    describe('lock balance', function () {
+
+        beforeEach(async function () {
+            await this.token.createTokensVaults();
+        });
+
+        describe('lock all of the balance', function () {
+
+            describe('all of the rewardPoolTokensVault tokens can be locked correctly', function () {
+
+                beforeEach(async function () {
+                    this.address = await this.token.rewardPoolTokensVault();
+                    this.balance = await this.token.balanceOf(this.address);
+                    const { logs } = await this.token.lockRewardPoolTokens(sender, this.balance);
+                    this.logs = logs;
+                });
+
+                it('locked balance correct', async function () {
+                    (await this.token.lockedBalanceOf(sender)).should.be.bignumber.equal(this.balance)
+                })
+
+                it('the holder\'s balance correct', async function () {
+                    (await this.token.balanceOf(sender)).should.be.bignumber.equal(this.balance)
+                })
+
+                it('teamAdvisorsTokensVault balance correct', async function () {
+                    (await this.token.balanceOf(this.address)).should.be.bignumber.equal('0')
+                })
+
+                // Because of the limited of the truffle cases and service, only can catch one Event with same name in the logs
+                it('emits Approval event', async function () {
+                    const event = expectEvent.inLogs(this.logs, 'Approval', {
+                        owner: this.address,
+                        spender: this.token.address,
+                    });
+
+                    event.args.value.should.be.bignumber.equal('0');
+                });
+
+                it('emits Transfer event', async function () {
+                    const event = expectEvent.inLogs(this.logs, 'Transfer', {
+                        from: this.address,
+                        to: sender,
+                    });
+
+                    event.args.value.should.be.bignumber.equal(this.balance);
+                });
+
+            })
+
+            describe('all of the foundersTokensVault tokens can be locked correctly', function () {
+
+                beforeEach(async function () {
+                    this.address = await this.token.foundersTokensVault();
+                    this.balance = await this.token.balanceOf(this.address);
+                    const { logs } = await this.token.lockFoundersTokens(sender, this.balance);
+                    this.logs = logs;
+                });
+
+                it('locked balance correct', async function () {
+                    (await this.token.lockedBalanceOf(sender)).should.be.bignumber.equal(this.balance);
+                })
+
+                it('the holder\'s balance correct', async function () {
+                    (await this.token.balanceOf(sender)).should.be.bignumber.equal(this.balance);
+                })
+
+                it('teamAdvisorsTokensVault balance correct', async function () {
+                    (await this.token.balanceOf(this.address)).should.be.bignumber.equal('0')
+                })
+
+                it('emits Approval event', async function () {
+                    const event = expectEvent.inLogs(this.logs, 'Approval', {
+                        owner: this.address,
+                        spender: this.token.address,
+                    });
+
+                    event.args.value.should.be.bignumber.equal('0');
+                });
+
+                it('emits Transfer event', async function () {
+                    const event = expectEvent.inLogs(this.logs, 'Transfer', {
+                        from: this.address,
+                        to: sender,
+                    });
+
+                    event.args.value.should.be.bignumber.equal(this.balance);
+                });
+
+            })
+
+            describe('all of the teamAdvisorsTokensVault tokens can be locked correctly with a even number', function () {
+
+                beforeEach(async function () {
+                    this.address = await this.token.teamAdvisorsTokensVault();
+                    this.balance = await this.token.balanceOf(this.address);
+                    const { logs } = await this.token.lockTeamTokens(sender, this.balance);
+                    this.logs = logs;
+                });
+
+                it('locked balance correct', async function () {
+                    (await this.token.lockedBalanceOf(sender)).should.be.bignumber.equal(this.balance)
+                })
+
+                it('the holder\'s balance correct', async function () {
+                    (await this.token.balanceOf(sender)).should.be.bignumber.equal(this.balance)
+                })
+
+                it('teamAdvisorsTokensVault balance correct', async function () {
+                    (await this.token.balanceOf(this.address)).should.be.bignumber.equal('0')
+                })
+
+                it('emits Approval event of the 1st half part', async function () {
+                    const event = expectEvent.inLogs(this.logs, 'Approval', {
+                        value: new BN(this.balance.divn(2))
+                    })
+                });
+
+                it('emits Transfer event of the 1st half part', async function () {
+                    expectEvent.inLogs(this.logs, 'Transfer', {
+                        from: this.address,
+                        to: sender,
+                        value: this.balance.divn(2),
+                    });
+                });
+            })
+
+
+            it('lock teamAdvisorsTokensVault with a odd number', async function () {
+                const address = await this.token.teamAdvisorsTokensVault();
+                const balance = await this.token.balanceOf(address);
+                await shouldFail.reverting(this.token.lockTeamTokens(sender, balance.subn(1)));
+            })
+
+        });
+
+        describe('can\'t be locked over balance', function () {
+
+            it('rewardPoolTokensVault', async function () {
+                const address = await this.token.rewardPoolTokensVault();
+                const balance = await this.token.balanceOf(address);
+                await shouldFail.reverting(this.token.lockRewardPoolTokens(sender, balance.addn(1)));
+            })
+
+            it('foundersTokensVault', async function () {
+                const address = await this.token.foundersTokensVault();
+                const balance = await this.token.balanceOf(address);
+                await shouldFail.reverting(this.token.lockFoundersTokens(sender, balance.addn(1)));
+            })
+
+            it('teamAdvisorsTokensVault', async function () {
+                const address = await this.token.teamAdvisorsTokensVault();
+                const balance = await this.token.balanceOf(address);
+                await shouldFail.reverting(this.token.lockTeamTokens(sender, balance.addn(2)));
+            })
+
+        });
+
+        describe('can lock the tokens multi-twice', function () {
+
+            it('rewardPoolTokensVault', async function () {
+                const address = await this.token.rewardPoolTokensVault();
+                const balance = await this.token.balanceOf(address);
+                await this.token.lockRewardPoolTokens(sender, balance.subn(1));
+                await this.token.lockRewardPoolTokens(sender, new BN(1));
+                (await this.token.lockedBalanceOf(sender)).should.be.bignumber.equal(balance)
+            })
+
+
+            it('foundersTokensVault', async function () {
+                const address = await this.token.foundersTokensVault();
+                const balance = await this.token.balanceOf(address);
+                await this.token.lockFoundersTokens(sender, balance.subn(1));
+                await this.token.lockFoundersTokens(sender, new BN(1));
+                (await this.token.lockedBalanceOf(sender)).should.be.bignumber.equal(balance)
+            })
+
+            it('teamAdvisorsTokensVault', async function () {
+                const address = await this.token.teamAdvisorsTokensVault();
+                const balance = await this.token.balanceOf(address);
+                await this.token.lockTeamTokens(sender, balance.subn(2));
+                await this.token.lockTeamTokens(sender, new BN(2));
+                (await this.token.lockedBalanceOf(sender)).should.be.bignumber.equal(balance)
+            })
+
+        });
+
+    })
+
 
 
 });
