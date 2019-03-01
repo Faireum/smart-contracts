@@ -1036,11 +1036,11 @@ contract('FaireumToken', ([sender, receiver, accounts, anotherAccount, recipient
             describe('onlyAdmin', function () {
 
                 it('allows the admin account to call onlyAdmin functions', async function () {
-                    await this.token.createTokensVaults({from: sender});
+                    await this.token.createTokensVaults({ from: sender });
                 });
 
                 it('reverts when anyone calls onlyAdmin functions', async function () {
-                    await shouldFail.reverting(this.token.createTokensVaults({from: anotherAccount}));
+                    await shouldFail.reverting(this.token.createTokensVaults({ from: anotherAccount }));
                 });
             })
 
@@ -1163,7 +1163,7 @@ contract('FaireumToken', ([sender, receiver, accounts, anotherAccount, recipient
                         beforeEach(async function () {
                             this.address = await this.token.rewardPoolTokensVault();
                             this.balance = await this.token.balanceOf(this.address);
-                            const {logs} = await this.token.lockRewardPoolTokens(sender, this.balance);
+                            const { logs } = await this.token.lockRewardPoolTokens(sender, this.balance);
                             this.logs = logs;
                         });
 
@@ -1205,7 +1205,7 @@ contract('FaireumToken', ([sender, receiver, accounts, anotherAccount, recipient
                         beforeEach(async function () {
                             this.address = await this.token.foundersTokensVault();
                             this.balance = await this.token.balanceOf(this.address);
-                            const {logs} = await this.token.lockFoundersTokens(sender, this.balance);
+                            const { logs } = await this.token.lockFoundersTokens(sender, this.balance);
                             this.logs = logs;
                         });
 
@@ -1246,7 +1246,7 @@ contract('FaireumToken', ([sender, receiver, accounts, anotherAccount, recipient
                         beforeEach(async function () {
                             this.address = await this.token.teamAdvisorsTokensVault();
                             this.balance = await this.token.balanceOf(this.address);
-                            const {logs} = await this.token.lockTeamTokens(sender, this.balance);
+                            const { logs } = await this.token.lockTeamTokens(sender, this.balance);
                             this.logs = logs;
                         });
 
@@ -1441,7 +1441,436 @@ contract('FaireumToken', ([sender, receiver, accounts, anotherAccount, recipient
 
             })
 
-        })
+            describe('the basic ERC20 testing', function () {
+
+                beforeEach(async function () {
+                    await this.token.createTokensVaults();
+
+                    //allocation of the marketing part
+                    holderMarketing = accounts;
+                    const addressMarketing = await this.token.marketingAirdropTokensVault();
+                    const balanceMarketing = await this.token.balanceOf(addressMarketing);
+                    await this.token.approveMarketingSpender(holderMarketing, balanceMarketing);
+                    await this.token.transferFrom(addressMarketing, holderMarketing, balanceMarketing, {from: holderMarketing});
+                    balanceHolderMarketing = await this.token.balanceOf(holderMarketing);
+
+                });
+
+                describe('transfer', function () {
+                    describe('when the recipient is not the zero address', function () {
+
+                        describe('when the sender does not have enough balance', function () {
+
+                            it('reverts', async function () {
+                                const amount = balanceHolderMarketing.addn(1);
+                                await shouldFail.reverting(this.token.transfer(receiver, amount, { from: holderMarketing }));
+                            });
+                        });
+
+                        describe('when the sender has enough balance', function () {
+                            const amount = balanceHolderMarketing;
+
+                            it('transfers the requested amount', async function () {
+                                await this.token.transfer(receiver, balanceHolderMarketing, { from: holderMarketing });
+
+                                (await this.token.balanceOf(holderMarketing)).should.be.bignumber.equal('0');
+
+                                (await this.token.balanceOf(receiver)).should.be.bignumber.equal(balanceHolderMarketing);
+                            });
+
+                            it('emits a transfer event', async function () {
+                                const { logs } = await this.token.transfer(receiver, balanceHolderMarketing, { from: holderMarketing });
+
+                                expectEvent.inLogs(logs, 'Transfer', {
+                                    from: holderMarketing,
+                                    to: receiver,
+                                    value: balanceHolderMarketing,
+                                });
+                            });
+                        });
+                    });
+
+                    describe('when the recipient is the zero address', function () {
+                        const to = ZERO_ADDRESS;
+
+                        it('reverts', async function () {
+                            await shouldFail.reverting(this.token.transfer(to, balanceHolderMarketing, { from: holderMarketing }));
+                        });
+                    });
+                });
+
+                describe('approve', function () {
+                    describe('when the spender is not the zero address', function () {
+                        const spender = recipient;
+
+                        describe('when the sender has enough balance', function () {
+
+                            it('emits an approval event', async function () {
+                                const { logs } = await this.token.approve(spender, balanceHolderMarketing, { from: holderMarketing });
+
+                                expectEvent.inLogs(logs, 'Approval', {
+                                    owner: holderMarketing,
+                                    spender: spender,
+                                    value: balanceHolderMarketing,
+                                });
+                            });
+
+                            describe('when there was no approved amount before', function () {
+                                it('approves the requested amount', async function () {
+                                    await this.token.approve(spender, balanceHolderMarketing, { from: holderMarketing });
+
+                                    (await this.token.allowance(holderMarketing, spender)).should.be.bignumber.equal(balanceHolderMarketing);
+                                });
+                            });
+
+                            describe('when the spender had an approved amount', function () {
+                                beforeEach(async function () {
+                                    await this.token.approve(spender, new BN(1), { from: holderMarketing });
+                                });
+
+                                it('approves the requested amount and replaces the previous one', async function () {
+                                    await this.token.approve(spender, balanceHolderMarketing, { from: holderMarketing });
+
+                                    (await this.token.allowance(holderMarketing, spender)).should.be.bignumber.equal(balanceHolderMarketing);
+                                });
+                            });
+                        });
+
+                        describe('when the sender does not have enough balance', function () {
+
+                            it('emits an approval event', async function () {
+                                const { logs } = await this.token.approve(spender, balanceHolderMarketing.addn(1), { from: holderMarketing });
+
+                                expectEvent.inLogs(logs, 'Approval', {
+                                    owner: holderMarketing,
+                                    spender: spender,
+                                    value: balanceHolderMarketing.addn(1),
+                                });
+                            });
+
+                            describe('when there was no approved amount before', function () {
+                                it('approves the requested amount', async function () {
+                                    await this.token.approve(spender, balanceHolderMarketing.addn(1), { from: holderMarketing });
+
+                                    (await this.token.allowance(holderMarketing, spender)).should.be.bignumber.equal(balanceHolderMarketing.addn(1));
+                                });
+                            });
+
+                            describe('when the spender had an approved amount', function () {
+                                beforeEach(async function () {
+                                    await this.token.approve(spender, new BN(1), { from: holderMarketing });
+                                });
+
+                                it('approves the requested amount and replaces the previous one', async function () {
+                                    await this.token.approve(spender, balanceHolderMarketing.addn(1), { from: holderMarketing });
+
+                                    (await this.token.allowance(holderMarketing, spender)).should.be.bignumber.equal(balanceHolderMarketing.addn(1));
+                                });
+                            });
+                        });
+                    });
+
+                    describe('when the spender is the zero address', function () {
+                        const spender = ZERO_ADDRESS;
+
+                        it('reverts', async function () {
+                            await shouldFail.reverting(this.token.approve(spender, balanceHolderMarketing, { from: holderMarketing }));
+                        });
+                    });
+                });
+
+                describe('transfer from', function () {
+                    const spender = recipient;
+
+                    describe('when the recipient is not the zero address', function () {
+                        const to = anotherAccount;
+
+                        describe('when the spender has enough approved balance', function () {
+                            beforeEach(async function () {
+                                await this.token.approve(spender, balanceHolderMarketing, { from: holderMarketing });
+                            });
+
+                            describe('when the initial holder has enough balance', function () {
+
+                                it('transfers the requested amount', async function () {
+                                    await this.token.transferFrom(holderMarketing, to, balanceHolderMarketing, { from: spender });
+
+                                    (await this.token.balanceOf(holderMarketing)).should.be.bignumber.equal('0');
+
+                                    (await this.token.balanceOf(to)).should.be.bignumber.equal(balanceHolderMarketing);
+                                });
+
+                                it('decreases the spender allowance', async function () {
+                                    await this.token.transferFrom(holderMarketing, to, balanceHolderMarketing, { from: spender });
+
+                                    (await this.token.allowance(holderMarketing, spender)).should.be.bignumber.equal('0');
+                                });
+
+                                it('emits a transfer event', async function () {
+                                    const { logs } = await this.token.transferFrom(holderMarketing, to, balanceHolderMarketing, { from: spender });
+
+                                    expectEvent.inLogs(logs, 'Transfer', {
+                                        from: holderMarketing,
+                                        to: to,
+                                        value: balanceHolderMarketing,
+                                    });
+                                });
+
+                                it('emits an approval event', async function () {
+                                    const { logs } = await this.token.transferFrom(holderMarketing, to, balanceHolderMarketing, { from: spender });
+
+                                    expectEvent.inLogs(logs, 'Approval', {
+                                        owner: holderMarketing,
+                                        spender: spender,
+                                        value: await this.token.allowance(holderMarketing, spender),
+                                    });
+                                });
+                            });
+
+                            describe('when the initial holder does not have enough balance', function () {
+
+                                it('reverts', async function () {
+                                    await shouldFail.reverting(this.token.transferFrom(holderMarketing, to, balanceHolderMarketing.addn(1), { from: spender }));
+                                });
+                            });
+                        });
+
+                        describe('when the spender does not have enough approved balance', function () {
+                            beforeEach(async function () {
+                                await this.token.approve(spender, balanceHolderMarketing.subn(1), { from: holderMarketing });
+                            });
+
+                            describe('when the initial holder has enough balance', function () {
+
+                                it('reverts', async function () {
+                                    await shouldFail.reverting(this.token.transferFrom(holderMarketing, to, balanceHolderMarketing, { from: spender }));
+                                });
+                            });
+
+                            describe('when the initial holder does not have enough balance', function () {
+
+                                it('reverts', async function () {
+                                    await shouldFail.reverting(this.token.transferFrom(holderMarketing, to, balanceHolderMarketing.addn(1), { from: spender }));
+                                });
+                            });
+                        });
+                    });
+
+                    describe('when the recipient is the zero address', function () {
+                        const to = ZERO_ADDRESS;
+
+                        beforeEach(async function () {
+                            await this.token.approve(spender, balanceHolderMarketing, { from: holderMarketing });
+                        });
+
+                        it('reverts', async function () {
+                            await shouldFail.reverting(this.token.transferFrom(holderMarketing, to, balanceHolderMarketing, { from: spender }));
+                        });
+                    });
+                });
+
+                describe('decrease allowance', function () {
+                    describe('when the spender is not the zero address', function () {
+                        const spender = recipient;
+
+                        function shouldDecreaseApproval (amount) {
+                            describe('when there was no approved amount before', function () {
+                                it('reverts', async function () {
+                                    await shouldFail.reverting(this.token.decreaseAllowance(spender, amount, { from: holderMarketing }));
+                                });
+                            });
+
+                            describe('when the spender had an approved amount', function () {
+                                const approvedAmount = amount;
+
+                                beforeEach(async function () {
+                                    ({ logs: this.logs } = await this.token.approve(spender, approvedAmount, { from: holderMarketing }));
+                                });
+
+                                it('emits an approval event', async function () {
+                                    const { logs } = await this.token.decreaseAllowance(spender, approvedAmount, { from: holderMarketing });
+
+                                    expectEvent.inLogs(logs, 'Approval', {
+                                        owner: holderMarketing,
+                                        spender: spender,
+                                        value: new BN(0),
+                                    });
+                                });
+
+                                it('decreases the spender allowance subtracting the requested amount', async function () {
+                                    await this.token.decreaseAllowance(spender, approvedAmount.subn(1), { from: holderMarketing });
+
+                                    (await this.token.allowance(holderMarketing, spender)).should.be.bignumber.equal('1');
+                                });
+
+                                it('sets the allowance to zero when all allowance is removed', async function () {
+                                    await this.token.decreaseAllowance(spender, approvedAmount, { from: holderMarketing });
+                                    (await this.token.allowance(holderMarketing, spender)).should.be.bignumber.equal('0');
+                                });
+
+                                it('reverts when more than the full allowance is removed', async function () {
+                                    await shouldFail.reverting(
+                                        this.token.decreaseAllowance(spender, approvedAmount.addn(1), { from: holderMarketing })
+                                    );
+                                });
+                            });
+                        }
+
+                        describe('when the sender has enough balance', function () {
+                            const amount = balanceHolderMarketing;
+
+                            shouldDecreaseApproval(amount);
+                        });
+
+                        describe('when the sender does not have enough balance', function () {
+                            const amount = balanceHolderMarketing.addn(1);
+
+                            shouldDecreaseApproval(amount);
+                        });
+                    });
+
+                    describe('when the spender is the zero address', function () {
+                        const amount = balanceHolderMarketing;
+                        const spender = ZERO_ADDRESS;
+
+                        it('reverts', async function () {
+                            await shouldFail.reverting(this.token.decreaseAllowance(spender, amount, { from: holderMarketing }));
+                        });
+                    });
+                });
+
+                describe('increase allowance', function () {
+                    const amount = balanceHolderMarketing;
+
+                    describe('when the spender is not the zero address', function () {
+                        const spender = recipient;
+
+                        describe('when the sender has enough balance', function () {
+                            it('emits an approval event', async function () {
+                                const { logs } = await this.token.increaseAllowance(spender, amount, { from: holderMarketing });
+
+                                expectEvent.inLogs(logs, 'Approval', {
+                                    owner: holderMarketing,
+                                    spender: spender,
+                                    value: amount,
+                                });
+                            });
+
+                            describe('when there was no approved amount before', function () {
+                                it('approves the requested amount', async function () {
+                                    await this.token.increaseAllowance(spender, amount, { from: holderMarketing });
+
+                                    (await this.token.allowance(holderMarketing, spender)).should.be.bignumber.equal(amount);
+                                });
+                            });
+
+                            describe('when the spender had an approved amount', function () {
+                                beforeEach(async function () {
+                                    await this.token.approve(spender, new BN(1), { from: holderMarketing });
+                                });
+
+                                it('increases the spender allowance adding the requested amount', async function () {
+                                    await this.token.increaseAllowance(spender, amount, { from: holderMarketing });
+
+                                    (await this.token.allowance(holderMarketing, spender)).should.be.bignumber.equal(amount.addn(1));
+                                });
+                            });
+                        });
+
+                        describe('when the sender does not have enough balance', function () {
+                            const amount = initialSupply.addn(1);
+
+                            it('emits an approval event', async function () {
+                                const { logs } = await this.token.increaseAllowance(spender, amount, { from: holderMarketing });
+
+                                expectEvent.inLogs(logs, 'Approval', {
+                                    owner: holderMarketing,
+                                    spender: spender,
+                                    value: amount,
+                                });
+                            });
+
+                            describe('when there was no approved amount before', function () {
+                                it('approves the requested amount', async function () {
+                                    await this.token.increaseAllowance(spender, amount, { from: holderMarketing });
+
+                                    (await this.token.allowance(holderMarketing, spender)).should.be.bignumber.equal(amount);
+                                });
+                            });
+
+                            describe('when the spender had an approved amount', function () {
+                                beforeEach(async function () {
+                                    await this.token.approve(spender, new BN(1), { from: holderMarketing });
+                                });
+
+                                it('increases the spender allowance adding the requested amount', async function () {
+                                    await this.token.increaseAllowance(spender, amount, { from: holderMarketing });
+
+                                    (await this.token.allowance(holderMarketing, spender)).should.be.bignumber.equal(amount.addn(1));
+                                });
+                            });
+                        });
+                    });
+
+                    describe('when the spender is the zero address', function () {
+                        const spender = ZERO_ADDRESS;
+
+                        it('reverts', async function () {
+                            await shouldFail.reverting(this.token.increaseAllowance(spender, amount, { from: holderMarketing }));
+                        });
+                    });
+                });
+
+                describe('_burn', function () {
+                    /*it('rejects a null account', async function () {
+                        await shouldFail.reverting(this.token.burn(new BN(1), {from: ZERO_ADDRESS}));
+                    });*/
+
+                    describe('for a non null account', function () {
+                        it('rejects burning more than balance', async function () {
+                            await shouldFail.reverting(this.token.burn(balanceHolderMarketing.addn(1)), {from: holderMarketing});
+                        });
+
+                        const describeBurn = function (description, amount) {
+                            describe(description, function () {
+                                beforeEach('burning', async function () {
+                                    const { logs } = await this.token.burn(amount, {from: holderMarketing});
+                                    this.logs = logs;
+                                });
+
+                                it('decrements totalSupply', async function () {
+                                    const expectedSupply = initialSupply.sub(amount);
+                                    (await this.token.totalSupply()).should.be.bignumber.equal(expectedSupply);
+                                });
+
+                                it('decrements holderMarketing balance', async function () {
+                                    const expectedBalance = balanceHolderMarketing.sub(amount);
+                                    (await this.token.balanceOf(holderMarketing)).should.be.bignumber.equal(expectedBalance);
+                                });
+
+                                it('emits Transfer event', async function () {
+                                    const event = expectEvent.inLogs(this.logs, 'Transfer', {
+                                        from: holderMarketing,
+                                        to: ZERO_ADDRESS,
+                                    });
+
+                                    event.args.value.should.be.bignumber.equal(amount);
+                                });
+                            });
+                        };
+
+                        describeBurn('for entire balance', balanceHolderMarketing);
+                        describeBurn('for less amount than balance', balanceHolderMarketing.subn(1));
+                    });
+                });
+
+            })
+
+
+
+
+        });
+
     })
     // - End lockable test cases -
 
