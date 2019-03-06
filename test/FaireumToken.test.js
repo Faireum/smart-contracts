@@ -1867,11 +1867,42 @@ contract('FaireumToken', ([sender, receiver, accounts, anotherAccount, recipient
             })
 
 
+            // - Begin AdminRole test cases -
+            // Added at 2019.01.24 - by Eric
+            describe('the admin role allocation', function() {
 
+                it('the contract creator is the beginning admin', async function () {
+                    (await this.token.isAdmin(sender)).should.equal(true);
+                })
+
+                it('the others is not a admin', async function () {
+                    (await this.token.isAdmin(anotherAccount)).should.equal(false);
+                })
+
+                it('the admin can add another admin', async function () {
+                    (await this.token.addAdmin(anotherAccount));
+                    (await this.token.isAdmin(anotherAccount)).should.equal(true);
+                })
+
+                it('only admin can add another admin', async function () {
+                    await shouldFail.reverting(this.token.addAdmin(anotherAccount, {from: receiver}));
+                })
+
+                it('the admin can be renounced by himself', async function () {
+                    (await this.token.renounceAdmin());
+                    (await this.token.isAdmin(sender)).should.equal(false);
+                })
+            })
+            // - End AdminRole test cases -
+
+            
 
         });
-
+        it('locked balance can be transferred after 1 year(365 days) later ', async function () {
+            await time.increase(time.duration.days(183));
+            await this.token.transfer(anotherAccount, this.balance);
+            (await this.token.balanceOf(sender)).should.be.bignumber.equal('0');
+        })
     })
-    // - End lockable test cases -
 
 });
